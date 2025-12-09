@@ -18,6 +18,7 @@ Subcommands:
   list                List all sources
 
 Add Options:
+  --type=<type>          Source type: llms_txt or firecrawl (default: auto-detect)
   --group=<name>         Add source to a group (creates group if needed)
   --crawl-limit=<n>      Max pages to crawl (firecrawl only, default: 100)
   --include-optional     Include optional entries (llms_txt only)
@@ -229,6 +230,7 @@ async function handleAdd(args: string[], service: SourcesService) {
 Usage: mcp-docs source add <name> <url> [options]
 
 Options:
+  --type=<type>          Source type: llms_txt or firecrawl (default: auto-detect)
   --group=<name>         Add source to a group (creates group if needed)
   --crawl-limit=<n>      Max pages to crawl (firecrawl only, default: 100)
   --include-optional     Include optional entries (llms_txt only)
@@ -237,6 +239,7 @@ Options:
 
 Examples:
   mcp-docs source add react react.dev
+  mcp-docs source add openai platform.openai.com/docs --type=firecrawl
   mcp-docs source add azure-core learn.microsoft.com/azure --group=azure
   mcp-docs source add nextjs nextjs.org/docs --crawl-limit=200
 `);
@@ -246,6 +249,7 @@ Examples:
   const { values, positionals } = parseArgs({
     args,
     options: {
+      type: { type: "string" },
       group: { type: "string" },
       "crawl-limit": { type: "string" },
       "include-optional": { type: "boolean", default: false },
@@ -269,8 +273,32 @@ Examples:
     process.exit(1);
   }
 
-  // Auto-detect type by probing for llms.txt
-  const detected = await detectSourceType(urlInput);
+  // Validate explicit type if provided
+  if (
+    values.type &&
+    values.type !== "llms_txt" &&
+    values.type !== "firecrawl"
+  ) {
+    console.error(
+      `Error: invalid type '${values.type}'. Must be 'llms_txt' or 'firecrawl'.`,
+    );
+    process.exit(1);
+  }
+
+  // Use explicit type or auto-detect
+  let detected: DetectedSource;
+
+  if (values.type) {
+    // Explicit type - skip auto-detection
+    detected = {
+      type: values.type as "llms_txt" | "firecrawl",
+      url: normalizeUrl(urlInput),
+    };
+    console.log(`Using explicit type: ${detected.type}`);
+  } else {
+    // Auto-detect type by probing for llms.txt
+    detected = await detectSourceType(urlInput);
+  }
 
   // Build source object
   const source: DocSource = {
