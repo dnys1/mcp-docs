@@ -6,6 +6,7 @@ import { crawlWebDocs } from "../ingestion/firecrawl.js";
 import { fetchLlmsTxtDocs } from "../ingestion/llms-txt.js";
 import type { DocSource, FetchedDocument } from "../types/index.js";
 import { logger } from "../utils/logger.js";
+import { generateSourceDescription } from "./description-service.js";
 
 export interface IngestionOptions {
   resume?: boolean;
@@ -44,10 +45,24 @@ export class IngestionService {
       dryRun: options?.dryRun ?? false,
     });
 
+    // Get cached URLs to exclude from crawl (saves Firecrawl costs)
+    let cachedUrls: string[] = [];
+    if (source.type === "firecrawl" && !options?.dryRun) {
+      const existingSource = await this.repo.getSourceByName(source.name);
+      if (existingSource) {
+        cachedUrls = await this.repo.getDocumentUrls(existingSource.id);
+        if (cachedUrls.length > 0) {
+          this.log.info(
+            `Found ${cachedUrls.length} cached documents to exclude from crawl`,
+          );
+        }
+      }
+    }
+
     let documents: FetchedDocument[];
 
     try {
-      documents = await this.fetchDocuments(source);
+      documents = await this.fetchDocuments(source, cachedUrls);
     } catch (error) {
       this.log.error(`Failed to fetch documents for ${source.name}`, {
         source: source.name,
@@ -61,10 +76,25 @@ export class IngestionService {
       return this.performDryRun(source, documents);
     }
 
+    // Generate description from document titles if not already set
+    let description = source.description;
+    if (!description) {
+      this.log.info("Generating description from document titles...");
+      const titles = documents.map((d) => d.title);
+      description = await generateSourceDescription(
+        source.name,
+        source.url,
+        titles,
+      );
+      this.log.info("Generated description", { description });
+    }
+
     const sourceId = await this.repo.upsertSource({
       name: source.name,
       type: source.type,
       baseUrl: source.url,
+      groupName: source.groupName,
+      description,
     });
 
     // Check for existing incomplete ingestion
@@ -164,6 +194,7 @@ export class IngestionService {
 
         this.log.info(`Ingested document`, {
           title: doc.title,
+          url: doc.url,
           chunks: chunks.length,
           progress: `${progressPct}%`,
         });
@@ -208,11 +239,17 @@ export class IngestionService {
 
   // ============ Private Methods ============
 
-  private async fetchDocuments(source: DocSource): Promise<FetchedDocument[]> {
+  private async fetchDocuments(
+    source: DocSource,
+    cachedUrls: string[] = [],
+  ): Promise<FetchedDocument[]> {
     if (source.type === "llms_txt") {
       return fetchLlmsTxtDocs(source.url, source.options);
     } else if (source.type === "firecrawl") {
-      return crawlWebDocs(source.url, source.options);
+      return crawlWebDocs(source.url, {
+        ...source.options,
+        cachedUrls,
+      });
     } else {
       throw new Error(`Unknown source type: ${source.type}`);
     }

@@ -54,7 +54,10 @@ export async function parseLlmsTxt(url: string): Promise<LlmsTxtEntry[]> {
         // Resolve relative URLs against the llms.txt origin
         if (linkUrl.startsWith("/")) {
           linkUrl = `${origin}${linkUrl}`;
-        } else if (!linkUrl.startsWith("http://") && !linkUrl.startsWith("https://")) {
+        } else if (
+          !linkUrl.startsWith("http://") &&
+          !linkUrl.startsWith("https://")
+        ) {
           // Handle relative paths without leading slash
           linkUrl = new URL(linkUrl, url).href;
         }
