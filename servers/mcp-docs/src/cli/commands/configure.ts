@@ -6,6 +6,7 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import * as readline from "node:readline";
 
 const PROJECT_DIR = join(import.meta.dir, "..", "..", "..");
 const PROJECT_NAME = "mcp-docs";
@@ -28,41 +29,119 @@ const HELP_TEXT = `
 Usage: mcp-docs configure [options]
 
 Options:
-  --vscode    Also configure VSCode (macOS only)
   --help, -h  Show this help message
 
 Configures the MCP server in:
   - Claude Code (~/.claude.json)
-  - VSCode (~/Library/Application Support/Code/User/mcp.json) if --vscode
+  - VSCode (~/Library/Application Support/Code/User/mcp.json) - macOS only
 
 The server will be configured to run from the built dist/index.js.
 Make sure to run 'mcp-docs build' first.
+
+Required environment variables:
+  - OPENAI_API_KEY: Required for embeddings and search queries
 `;
 
-async function updateClaudeCodeConfig() {
-  try {
-    const command = `claude mcp add ${PROJECT_NAME} --scope user -- bun run ${join(
-      PROJECT_DIR,
-      "dist/index.js",
-    )}`;
+/**
+ * Prompt the user for input.
+ */
+async function prompt(question: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
 
-    console.log(`  Running: ${command}`);
-    execSync(command, { stdio: "inherit" });
-    console.log(`Updated Claude Code config`);
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+/**
+ * Get the OpenAI API key from environment or prompt the user.
+ */
+async function getOpenAIApiKey(): Promise<string | null> {
+  const existingKey = process.env.OPENAI_API_KEY;
+
+  if (existingKey) {
+    const masked = `${existingKey.slice(0, 7)}...${existingKey.slice(-4)}`;
+    console.log(`  Found OPENAI_API_KEY in environment: ${masked}`);
+    const useExisting = await prompt("  Use this key? [Y/n]: ");
+    if (useExisting.toLowerCase() !== "n") {
+      return existingKey;
+    }
+  }
+
+  console.log("\n  OPENAI_API_KEY is required for embeddings and search.");
+  console.log("  Get one at: https://platform.openai.com/api-keys\n");
+
+  const key = await prompt(
+    "  Enter your OpenAI API key (or press Enter to skip): ",
+  );
+
+  if (!key) {
+    console.log(
+      "  Skipping API key configuration. You'll need to set OPENAI_API_KEY manually.",
+    );
+    return null;
+  }
+
+  return key;
+}
+
+async function updateClaudeCodeConfig(openaiKey: string | null) {
+  const distPath = join(PROJECT_DIR, "dist/index.js");
+  const envFlags = openaiKey ? `-e OPENAI_API_KEY=${openaiKey}` : "";
+
+  // First, try to remove existing config (ignore errors if it doesn't exist)
+  try {
+    console.log(`  Removing existing ${PROJECT_NAME} config if present...`);
+    execSync(`claude mcp remove ${PROJECT_NAME} --scope user`, {
+      stdio: "pipe",
+    });
+    console.log(`  Removed existing config`);
+  } catch {
+    // Ignore - server might not exist yet
+    console.log(`  No existing config found`);
+  }
+
+  // Now add the config
+  try {
+    const command = `claude mcp add ${PROJECT_NAME} --scope user ${envFlags} -- bun run ${distPath}`;
+
+    console.log(`  Adding ${PROJECT_NAME} to Claude Code...`);
+    execSync(command, { stdio: "pipe" });
+    console.log(`  Updated Claude Code config`);
   } catch (error: unknown) {
-    const execError = error as { status?: number; message?: string };
+    const execError = error as {
+      status?: number;
+      message?: string;
+      stderr?: Buffer;
+    };
     if (execError.status === 127) {
       console.error(
-        "Claude Code CLI not found. Please install it first: https://claude.ai/code",
+        "  Claude Code CLI not found. Please install it first: https://claude.ai/code",
       );
     } else {
-      console.error("Failed to update Claude Code config:", execError.message);
+      // Don't print the full error message as it may contain the API key
+      console.error("  Failed to add MCP server to Claude Code");
+      console.error(
+        "  Try running manually: claude mcp add mcp-docs --scope user -e OPENAI_API_KEY=<your-key> -- bun run dist/index.js",
+      );
     }
     throw error;
   }
 }
 
-function updateVSCodeMCPConfig() {
+async function updateVSCodeMCPConfig(openaiKey: string | null) {
+  // Only supported on macOS for now
+  if (process.platform !== "darwin") {
+    console.log("  VSCode configuration is only supported on macOS");
+    return;
+  }
+
   const vscodeDir = join(
     homedir(),
     "Library",
@@ -73,8 +152,19 @@ function updateVSCodeMCPConfig() {
   const mcpConfigPath = join(vscodeDir, "mcp.json");
 
   if (!existsSync(vscodeDir)) {
-    console.log("VSCode not found, skipping");
+    console.log("  VSCode user directory not found, skipping");
     return;
+  }
+
+  // If mcp.json doesn't exist, ask if they want to create it
+  if (!existsSync(mcpConfigPath)) {
+    const create = await prompt(
+      "  VSCode mcp.json not found. Create it? [Y/n]: ",
+    );
+    if (create.toLowerCase() === "n") {
+      console.log("  Skipping VSCode configuration");
+      return;
+    }
   }
 
   // Backup the original file if it exists
@@ -109,11 +199,16 @@ function updateVSCodeMCPConfig() {
     type: "stdio",
     command: "bun",
     args: ["run", join(PROJECT_DIR, "dist/index.js")],
+    ...(openaiKey && {
+      env: {
+        OPENAI_API_KEY: openaiKey,
+      },
+    }),
   };
 
   try {
     writeFileSync(mcpConfigPath, JSON.stringify(config, null, 4));
-    console.log(`Updated VSCode MCP config: ${mcpConfigPath}`);
+    console.log(`  Updated VSCode MCP config: ${mcpConfigPath}`);
   } catch (error) {
     console.error("Failed to write VSCode MCP config:", error);
     // Restore backup if it exists
@@ -134,16 +229,25 @@ export async function configureCommand(args: string[]) {
 
   console.log(`\n📦 Configuring ${PROJECT_NAME} MCP server...\n`);
 
+  // Get OpenAI API key
+  console.log("Checking for OpenAI API key...");
+  const openaiKey = await getOpenAIApiKey();
+  console.log();
+
+  // Configure Claude Code
+  console.log("Configuring Claude Code...");
   try {
-    await updateClaudeCodeConfig();
+    await updateClaudeCodeConfig(openaiKey);
   } catch {
-    console.error("Failed to update Claude Code config");
+    console.error("  Failed to update Claude Code config");
   }
 
+  // Configure VSCode
+  console.log("\nConfiguring VSCode...");
   try {
-    updateVSCodeMCPConfig();
+    await updateVSCodeMCPConfig(openaiKey);
   } catch {
-    console.error("Failed to update VSCode MCP config");
+    console.error("  Failed to update VSCode MCP config");
   }
 
   console.log(`
