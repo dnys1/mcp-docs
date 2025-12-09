@@ -239,14 +239,26 @@ export class DocsRepository {
   }
 
   /**
-   * Check if a group name exists (i.e., any source has this group_name).
+   * Check if a name refers to a group (not a source with that name).
+   * Returns false if there's a source with exactly that name.
    */
   async isGroup(name: string): Promise<boolean> {
-    const result = await this.db.execute({
+    // First check if there's a source with this exact name
+    const sourceResult = await this.db.execute({
+      sql: `SELECT id FROM sources WHERE name = ?`,
+      args: [name],
+    });
+    if (sourceResult.rows.length > 0) {
+      // There's a source with this name - it's not a group reference
+      return false;
+    }
+
+    // Check if any sources use this as their group_name
+    const groupResult = await this.db.execute({
       sql: `SELECT COUNT(*) as count FROM sources WHERE group_name = ?`,
       args: [name],
     });
-    return (result.rows[0]?.count as number) > 0;
+    return (groupResult.rows[0]?.count as number) > 0;
   }
 
   /**
