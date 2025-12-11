@@ -16,6 +16,7 @@
 import { buildCommand } from "./commands/build.js";
 import { configureCommand } from "./commands/configure.js";
 import { ingestCommand } from "./commands/ingest.js";
+import { searchCommand } from "./commands/search.js";
 import { sourceCommand } from "./commands/source.js";
 import { statusCommand } from "./commands/status.js";
 
@@ -28,6 +29,7 @@ Usage:
 Commands:
   source      Manage documentation sources
   ingest      Ingest documentation into the database
+  search      Search documentation (for testing)
   status      Show server status
   build       Build the server to dist/
   configure   Configure MCP server in Claude Code / VSCode
@@ -35,6 +37,7 @@ Commands:
 Examples:
   mcp-docs source add react react.dev
   mcp-docs ingest --source=react
+  mcp-docs search playwright "how to take screenshot"
   mcp-docs status
 
 Run 'mcp-docs <command> --help' for more information on a command.
@@ -55,6 +58,9 @@ async function main() {
       break;
     case "ingest":
       await ingestCommand(args.slice(1));
+      break;
+    case "search":
+      await searchCommand(args.slice(1));
       break;
     case "status":
       await statusCommand(args.slice(1));
