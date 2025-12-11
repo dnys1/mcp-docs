@@ -3,7 +3,7 @@
  * Reduces API calls by caching recently used embeddings.
  */
 
-import { logger } from "../utils/logger.js";
+import { logger } from "@mcp/shared/logger";
 
 const log = logger.child({ module: "embedding-cache" });
 

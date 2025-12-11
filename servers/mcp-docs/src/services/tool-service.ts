@@ -6,7 +6,7 @@ import {
   cleanMarkdown,
   truncateContent,
 } from "../ingestion/markdown-cleaner.js";
-import { logger } from "../utils/logger.js";
+import { logger } from "@mcp/shared/logger";
 
 export interface SearchSourceParams {
   query: string;

@@ -8,7 +8,7 @@ import { DocsRepository } from "./db/repository.js";
 import { generateGroupDescription } from "./services/description-service.js";
 import { ToolService } from "./services/tool-service.js";
 import type { DocSource } from "./types/index.js";
-import { logger } from "./utils/logger.js";
+import { logger } from "@mcp/shared/logger";
 
 /**
  * Register a search tool for a standalone documentation source.

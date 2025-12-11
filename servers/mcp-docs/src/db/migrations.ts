@@ -1,5 +1,5 @@
 import type { Client } from "@libsql/client";
-import { logger } from "../utils/logger.js";
+import { logger } from "@mcp/shared/logger";
 import { SCHEMA } from "./schema.js";
 
 const log = logger.child({ module: "migrations" });

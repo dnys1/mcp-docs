@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
-import { logger } from "./logger.js";
+import { logger } from "@mcp/shared/logger";
 
 describe("logger", () => {
   let originalLogLevel: string | undefined;

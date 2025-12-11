@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { DocsRepository } from "../db/repository.js";
 import type { DocSource } from "../types/index.js";
-import { logger } from "../utils/logger.js";
+import { logger } from "@mcp/shared/logger";
 
 const log = logger.child({ module: "sources" });
 

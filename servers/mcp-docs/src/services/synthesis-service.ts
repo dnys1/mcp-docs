@@ -5,7 +5,7 @@
 
 import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
-import { logger } from "../utils/logger.js";
+import { logger } from "@mcp/shared/logger";
 
 const log = logger.child({ service: "SynthesisService" });
 
