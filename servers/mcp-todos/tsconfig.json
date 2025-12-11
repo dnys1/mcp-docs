@@ -3,8 +3,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@mcp/shared": ["../../packages/mcp-shared/src"],
-      "@mcp/shared/*": ["../../packages/mcp-shared/src/*"]
+      "@mcp/shared": ["../../packages/shared/src"],
+      "@mcp/shared/*": ["../../packages/shared/src/*"]
     }
   },
   "include": ["src"]
