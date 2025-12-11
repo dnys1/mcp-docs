@@ -2,7 +2,7 @@
  * Status command - show server and source statistics
  */
 
-import { createDbClient } from "../../db/client.js";
+import { DocsDatabase } from "../../db/client.js";
 import { DocsRepository } from "../../db/repository.js";
 
 const HELP_TEXT = `
@@ -47,8 +47,8 @@ export async function statusCommand(args: string[]) {
     return;
   }
 
-  const db = createDbClient();
-  const repo = new DocsRepository(db);
+  const db = new DocsDatabase();
+  const repo = new DocsRepository(db.client);
 
   console.log("\n📊 MCP Docs Server Status\n");
   console.log("─".repeat(60));

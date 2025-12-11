@@ -32,13 +32,6 @@ export class SourcesService {
   constructor(private repo: DocsRepository) {}
 
   /**
-   * Get all documentation sources.
-   */
-  async getAllSources(): Promise<DocSource[]> {
-    return this.listSources();
-  }
-
-  /**
    * List all sources from the database.
    */
   async listSources(): Promise<DocSource[]> {

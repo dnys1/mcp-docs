@@ -11,11 +11,11 @@
  */
 
 import { EmbeddingCache } from "../../cache/embedding-cache.js";
-import { createDbClient } from "../../db/client.js";
+import { DocsDatabase } from "../../db/client.js";
 import { DocsRepository } from "../../db/repository.js";
 import {
   type SynthesisModel,
-  synthesizeAnswer,
+  SynthesisService,
 } from "../../services/synthesis-service.js";
 import { ToolService } from "../../services/tool-service.js";
 
@@ -98,8 +98,8 @@ export async function searchCommand(args: string[]) {
     process.exit(1);
   }
 
-  const db = createDbClient();
-  const repo = new DocsRepository(db);
+  const db = new DocsDatabase();
+  const repo = new DocsRepository(db.client);
   const embeddingCache = new EmbeddingCache();
   const toolService = new ToolService(repo, embeddingCache);
 
@@ -177,10 +177,10 @@ export async function searchCommand(args: string[]) {
       }
 
       // Then synthesize
-      const synthResult = await synthesizeAnswer(
+      const synthesisService = SynthesisService.withOpenAI(model);
+      const synthResult = await synthesisService.synthesize(
         query,
         docsResult.documents,
-        model,
       );
       const totalMs = Math.round(performance.now() - startTime);
 

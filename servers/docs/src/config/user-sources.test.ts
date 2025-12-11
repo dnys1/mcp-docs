@@ -143,30 +143,6 @@ describe("SourcesService", () => {
     });
   });
 
-  describe("getAllSources", () => {
-    test("returns empty array when no sources", async () => {
-      const sources = await service.getAllSources();
-      expect(sources).toEqual([]);
-    });
-
-    test("returns all sources", async () => {
-      await service.saveSource({
-        name: "source-a",
-        type: "llms_txt",
-        url: "https://a.com/llms.txt",
-      });
-
-      await service.saveSource({
-        name: "source-b",
-        type: "firecrawl",
-        url: "https://b.com/docs",
-      });
-
-      const sources = await service.getAllSources();
-      expect(sources).toHaveLength(2);
-    });
-  });
-
   describe("sourceExists", () => {
     test("returns true for existing source", async () => {
       await service.saveSource({

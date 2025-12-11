@@ -1,21 +1,14 @@
-import { existsSync, mkdirSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { type Client, createClient } from "@libsql/client";
+import { Database } from "@mcp/shared/db";
 
-function getDefaultDbPath(): string {
-  const dataDir = join(homedir(), ".local", "share", "mcp-todos");
+const APP_NAME = "mcp-todos";
+const DB_FILE_NAME = "todos.db";
 
-  if (!existsSync(dataDir)) {
-    mkdirSync(dataDir, { recursive: true });
+/**
+ * Database for the todos MCP server.
+ * Stores todos in ~/.local/share/mcp-todos/todos.db
+ */
+export class TodosDatabase extends Database {
+  constructor(url?: string) {
+    super({ appName: APP_NAME, dbFileName: DB_FILE_NAME }, url);
   }
-
-  return join(dataDir, "todos.db");
-}
-
-export function createDbClient(url?: string): Client {
-  const databaseUrl =
-    url || process.env.DATABASE_URL || `file:${getDefaultDbPath()}`;
-
-  return createClient({ url: databaseUrl });
 }

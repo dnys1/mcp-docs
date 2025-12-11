@@ -5,25 +5,24 @@
 
 import { openai } from "@ai-sdk/openai";
 import { logger } from "@mcp/shared/logger";
+import type { LanguageModel } from "ai";
 import { generateText } from "ai";
-
-const log = logger.child({ service: "SynthesisService" });
 
 export type SynthesisModel = "gpt-4.1-mini" | "o4-mini" | "gpt-5";
 
-export interface SynthesisDocument {
+export type SynthesisDocument = {
   title: string;
   url: string;
   content: string;
-}
+};
 
-export interface SynthesisResult {
+export type SynthesisResult = {
   answer: string;
-  model: SynthesisModel;
+  model: string;
   inputTokens: number;
   outputTokens: number;
   durationMs: number;
-}
+};
 
 const SYNTHESIS_PROMPT = `You are a documentation assistant. Answer the user's question using ONLY the provided documentation.
 
@@ -36,65 +35,77 @@ Guidelines:
 - Format code with proper markdown code blocks and language tags`;
 
 /**
- * Synthesize an answer from documentation using an LLM.
+ * Service for synthesizing answers from documentation using an LLM.
  */
-export async function synthesizeAnswer(
-  query: string,
-  documents: SynthesisDocument[],
-  model: SynthesisModel = "gpt-4.1-mini",
-): Promise<SynthesisResult> {
-  const startTime = performance.now();
+export class SynthesisService {
+  private readonly log = logger.child({ service: "SynthesisService" });
 
-  // Format documents for the prompt
-  const docsText = documents
-    .map(
-      (doc, i) =>
-        `### Document ${i + 1}: ${doc.title}\nURL: ${doc.url}\n\n${doc.content}`,
-      ``,
-    )
-    .join("\n\n---\n\n");
+  constructor(
+    private readonly languageModel: LanguageModel,
+    private readonly modelName: string,
+  ) {}
 
-  const userPrompt = `Question: ${query}
+  /**
+   * Create a SynthesisService with an OpenAI model.
+   */
+  static withOpenAI(model: SynthesisModel = "gpt-4.1-mini"): SynthesisService {
+    return new SynthesisService(openai(model), model);
+  }
+
+  async synthesize(
+    query: string,
+    documents: SynthesisDocument[],
+  ): Promise<SynthesisResult> {
+    const startTime = performance.now();
+
+    // Format documents for the prompt
+    const docsText = documents
+      .map(
+        (doc, i) =>
+          `### Document ${i + 1}: ${doc.title}\nURL: ${doc.url}\n\n${doc.content}`,
+      )
+      .join("\n\n---\n\n");
+
+    const userPrompt = `Question: ${query}
 
 Source Documentation:
 
 ${docsText}`;
 
-  log.debug("Starting synthesis", {
-    model,
-    query: query.slice(0, 50),
-    documentCount: documents.length,
-    totalChars: docsText.length,
-  });
+    this.log.debug("Starting synthesis", {
+      model: this.modelName,
+      query: query.slice(0, 50),
+      documentCount: documents.length,
+      totalChars: docsText.length,
+    });
 
-  const llm = openai(model);
+    // Reasoning models (o4-mini) don't support temperature
+    const isReasoningModel = this.modelName.startsWith("o");
 
-  // Reasoning models (o4-mini) don't support temperature
-  const isReasoningModel = model.startsWith("o");
+    const result = await generateText({
+      model: this.languageModel,
+      system: SYNTHESIS_PROMPT,
+      prompt: userPrompt,
+      maxOutputTokens: 4096,
+      ...(isReasoningModel ? {} : { temperature: 0 }),
+    });
 
-  const result = await generateText({
-    model: llm,
-    system: SYNTHESIS_PROMPT,
-    prompt: userPrompt,
-    maxOutputTokens: 4096,
-    ...(isReasoningModel ? {} : { temperature: 0 }),
-  });
+    const durationMs = Math.round(performance.now() - startTime);
 
-  const durationMs = Math.round(performance.now() - startTime);
+    this.log.info("Synthesis completed", {
+      model: this.modelName,
+      query: query.slice(0, 50),
+      inputTokens: result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens,
+      durationMs,
+    });
 
-  log.info("Synthesis completed", {
-    model,
-    query: query.slice(0, 50),
-    inputTokens: result.usage.inputTokens,
-    outputTokens: result.usage.outputTokens,
-    durationMs,
-  });
-
-  return {
-    answer: result.text,
-    model,
-    inputTokens: result.usage.inputTokens ?? 0,
-    outputTokens: result.usage.outputTokens ?? 0,
-    durationMs,
-  };
+    return {
+      answer: result.text,
+      model: this.modelName,
+      inputTokens: result.usage.inputTokens ?? 0,
+      outputTokens: result.usage.outputTokens ?? 0,
+      durationMs,
+    };
+  }
 }

@@ -5,7 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { EmbeddingCache } from "./cache/embedding-cache.js";
 import { SourcesService } from "./config/user-sources.js";
-import { createDbClient } from "./db/client.js";
+import { DocsDatabase } from "./db/client.js";
 import { initializeDatabase } from "./db/migrations.js";
 import { DocsRepository } from "./db/repository.js";
 import { DescriptionService } from "./services/description-service.js";
@@ -100,10 +100,10 @@ async function registerGroupTool(
 
 export async function startServer() {
   // Initialize dependencies
-  const db = createDbClient();
-  await initializeDatabase(db);
+  const db = new DocsDatabase();
+  await initializeDatabase(db.client);
 
-  const repo = new DocsRepository(db);
+  const repo = new DocsRepository(db.client);
   const embeddingCache = new EmbeddingCache();
   const descriptionService = new DescriptionService(openai("gpt-4.1-mini"));
 
@@ -111,7 +111,7 @@ export async function startServer() {
   const sourcesService = new SourcesService(repo);
 
   // Load all sources from database
-  const sources = await sourcesService.getAllSources();
+  const sources = await sourcesService.listSources();
 
   // Organize sources by group
   const groups = new Map<string, DocSource[]>();

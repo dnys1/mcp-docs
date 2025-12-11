@@ -2,7 +2,7 @@ import { logger } from "@mcp/shared/logger";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { createDbClient } from "./db/client.js";
+import { TodosDatabase } from "./db/client.js";
 import { initializeDatabase } from "./db/migrations.js";
 import { TodoRepository } from "./db/repository.js";
 import { ProjectService } from "./services/project-service.js";
@@ -11,10 +11,10 @@ import { ToolService } from "./services/tool-service.js";
 
 export async function startServer() {
   // Initialize dependencies
-  const db = createDbClient();
-  await initializeDatabase(db);
+  const db = new TodosDatabase();
+  await initializeDatabase(db.client);
 
-  const repo = new TodoRepository(db);
+  const repo = new TodoRepository(db.client);
   const projectService = new ProjectService(repo);
   const todoService = new TodoService(repo);
   const toolService = new ToolService(projectService, todoService);

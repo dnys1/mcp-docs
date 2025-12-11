@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { createDbClient } from "../../db/client.js";
+import { TodosDatabase } from "../../db/client.js";
 import { initializeDatabase } from "../../db/migrations.js";
 import { TodoRepository } from "../../db/repository.js";
 import { TodoService } from "../../services/todo-service.js";
@@ -38,11 +38,11 @@ export async function doneCommand(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const db = createDbClient();
-  const repo = new TodoRepository(db);
+  const db = new TodosDatabase();
+  const repo = new TodoRepository(db.client);
 
   try {
-    await initializeDatabase(db);
+    await initializeDatabase(db.client);
     const todoService = new TodoService(repo);
 
     const todo = await todoService.markDone(todoId);

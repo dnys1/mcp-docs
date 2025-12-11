@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { logger } from "@mcp/shared/logger";
 import type { DocsRepository, IngestionProgress } from "../db/repository.js";
 import { chunkDocument } from "../ingestion/chunker.js";
-import { embedInBatches } from "../ingestion/embedder.js";
+import type { EmbedderService } from "../ingestion/embedder.js";
 import type { FirecrawlService } from "../ingestion/firecrawl.js";
 import { fetchLlmsTxtDocs } from "../ingestion/llms-txt.js";
 import type { DocSource, FetchedDocument } from "../types/index.js";
@@ -37,6 +37,7 @@ export class IngestionService {
     private repo: DocsRepository,
     private firecrawlService: FirecrawlService | undefined,
     private descriptionService: DescriptionService,
+    private embedderService: EmbedderService,
   ) {}
 
   async ingestSource(
@@ -182,7 +183,7 @@ export class IngestionService {
           progress: `${progressPct}%`,
         });
 
-        const embeddings = await embedInBatches(chunks);
+        const embeddings = await this.embedderService.embedInBatches(chunks);
 
         const documentId = await this.repo.upsertDocument({
           sourceId,

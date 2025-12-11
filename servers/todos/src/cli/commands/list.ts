@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { createDbClient } from "../../db/client.js";
+import { TodosDatabase } from "../../db/client.js";
 import { initializeDatabase } from "../../db/migrations.js";
 import { TodoRepository } from "../../db/repository.js";
 import { ProjectService } from "../../services/project-service.js";
@@ -65,11 +65,11 @@ export async function listCommand(args: string[]): Promise<void> {
 
   const limit = values.limit ? Number.parseInt(values.limit, 10) : undefined;
 
-  const db = createDbClient();
-  const repo = new TodoRepository(db);
+  const db = new TodosDatabase();
+  const repo = new TodoRepository(db.client);
 
   try {
-    await initializeDatabase(db);
+    await initializeDatabase(db.client);
 
     const projectService = new ProjectService(repo);
     const todoService = new TodoService(repo);
