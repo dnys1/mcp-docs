@@ -1,0 +1,23 @@
+{
+  "name": "mcp-todos",
+  "version": "0.1.0",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "cli": "bun run src/cli/index.ts",
+    "build": "bun run src/cli/index.ts build",
+    "start": "bun run dist/index.js",
+    "start:dev": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "bin": {
+    "mcp-todos": "./src/cli/index.ts"
+  },
+  "dependencies": {
+    "@mcp/shared": "workspace:*",
+    "@libsql/client": "^0.15.15",
+    "@modelcontextprotocol/sdk": "^1.24.3",
+    "zod": "^4.1.13"
+  }
+}

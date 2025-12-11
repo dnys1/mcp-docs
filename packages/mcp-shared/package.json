@@ -1,0 +1,19 @@
+{
+  "name": "@mcp/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./logger": "./src/logger.ts",
+    "./db-client": "./src/db-client.ts",
+    "./configure": "./src/configure/index.ts",
+    "./cli": "./src/cli/index.ts"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.15"
+  },
+  "peerDependencies": {
+    "bun": "*"
+  }
+}
