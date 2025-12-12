@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "bin": {
-    "mcp-todos": "./src/index.ts"
+    "todo": "./src/index.ts"
   },
   "dependencies": {
     "@mcp/shared": "workspace:*",

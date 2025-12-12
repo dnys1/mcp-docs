@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 
 /**
- * mcp-todos CLI - Multi-project TODO management
+ * todo CLI - Multi-project TODO management
  *
  * Usage:
- *   mcp-todos <command> [options]
+ *   todo <command> [options]
+ *   todo <title>              # Quick add a todo
  */
 
 import { addCommand } from "./commands/add.js";
@@ -19,15 +20,32 @@ import { projectCommand } from "./commands/project.js";
 import { showCommand } from "./commands/show.js";
 import { startCommand } from "./commands/start.js";
 
+const COMMANDS = new Set([
+  "start",
+  "add",
+  "list",
+  "ls",
+  "show",
+  "edit",
+  "done",
+  "delete",
+  "rm",
+  "project",
+  "init",
+  "build",
+  "configure",
+]);
+
 const HELP_TEXT = `
-mcp-todos - Multi-project TODO management
+todo - Multi-project TODO management
 
 Usage:
-  mcp-todos <command> [options]
+  todo <title>        Quick add a todo
+  todo <command>      Run a command
 
 Commands:
   start             Start the MCP server
-  add <title>       Add a new todo
+  add <title>       Add a new todo (with options)
   list              List todos for current project
   show <id>         Show todo details
   edit <id>         Edit a todo
@@ -39,12 +57,12 @@ Commands:
   configure         Configure MCP server in Claude Code / VSCode
 
 Examples:
-  mcp-todos add "Fix the login bug" -p high
-  mcp-todos list --status open
-  mcp-todos done abc123
-  mcp-todos project list
+  todo Buy milk, eggs, and butter
+  todo add "Fix the login bug" -p high
+  todo list --status open
+  todo done abc123
 
-Run 'mcp-todos <command> --help' for more information on a command.
+Run 'todo <command> --help' for more information on a command.
 `;
 
 async function main() {
@@ -54,6 +72,13 @@ async function main() {
   if (!command || command === "--help" || command === "-h") {
     console.log(HELP_TEXT);
     process.exit(0);
+  }
+
+  // If first arg is not a known command, treat entire input as a quick add
+  if (!COMMANDS.has(command)) {
+    const title = args.join(" ");
+    await addCommand([title]);
+    return;
   }
 
   switch (command) {
@@ -92,10 +117,6 @@ async function main() {
     case "configure":
       await configureCommand(args.slice(1));
       break;
-    default:
-      console.error(`Unknown command: ${command}`);
-      console.log(HELP_TEXT);
-      process.exit(1);
   }
 }
 
