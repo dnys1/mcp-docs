@@ -30,7 +30,6 @@ export async function buildCommand(args: string[]): Promise<void> {
     target: "bun",
     minify: false,
     sourcemap: "external",
-    bytecode: true,
     define: {
       "process.env.NODE_ENV": JSON.stringify("production"),
     },
