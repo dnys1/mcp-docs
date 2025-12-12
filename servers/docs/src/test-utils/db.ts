@@ -4,35 +4,67 @@
  */
 
 import { type Client, createClient } from "@libsql/client";
-import { initializeDatabase } from "../db/migrations.js";
+import { DocsMigrationService } from "../db/migrations.js";
 import { DocsRepository } from "../db/repository.js";
 
-export interface TestFixture {
-  db: Client;
-  repo: DocsRepository;
-  cleanup: () => Promise<void>;
-}
-
 /**
- * Create a test fixture with an in-memory database.
+ * Test fixture for in-memory database testing.
  */
-export async function createTestFixture(): Promise<TestFixture> {
-  const db = createClient({ url: ":memory:" });
-  const repo = new DocsRepository(db);
+export class TestFixture {
+  constructor(
+    readonly db: Client,
+    readonly repo: DocsRepository,
+  ) {}
 
-  // Suppress console output during tests
-  const originalLog = console.log;
-  console.log = () => {};
-  await initializeDatabase(db);
-  console.log = originalLog;
+  /**
+   * Create a test fixture with an in-memory database.
+   */
+  static async create(): Promise<TestFixture> {
+    const db = createClient({ url: ":memory:" });
+    const repo = new DocsRepository(db);
 
-  return {
-    db,
-    repo,
-    cleanup: async () => {
-      await repo.close();
-    },
-  };
+    // Suppress console output during tests
+    const originalLog = console.log;
+    console.log = () => {};
+    const migrationService = new DocsMigrationService(db);
+    await migrationService.initialize();
+    console.log = originalLog;
+
+    return new TestFixture(db, repo);
+  }
+
+  /**
+   * Create a fully seeded test database with sources, documents, and chunks.
+   */
+  static async createSeeded(): Promise<TestFixture> {
+    const fixture = await TestFixture.create();
+
+    const [sourceId] = await seedSources(fixture.repo);
+    if (!sourceId) throw new Error("Failed to seed sources");
+
+    const docIds = await seedDocuments(fixture.repo, sourceId);
+
+    // Seed chunks for each document
+    const contents = [
+      "Welcome to the documentation. This guide will help you get up and running quickly with our platform.",
+      "The API provides RESTful endpoints for managing resources. Use standard HTTP methods.",
+      "Authentication requires an API key. Include it in the Authorization header.",
+    ];
+
+    for (let i = 0; i < docIds.length; i++) {
+      const docId = docIds[i];
+      const content = contents[i];
+      if (docId && content) {
+        await seedChunks(fixture.repo, docId, content);
+      }
+    }
+
+    return fixture;
+  }
+
+  async cleanup(): Promise<void> {
+    await this.repo.close();
+  }
 }
 
 /**
@@ -158,33 +190,4 @@ export function createMockEmbedding(content: string): number[] {
   }
 
   return embedding;
-}
-
-/**
- * Create a fully seeded test database with sources, documents, and chunks.
- */
-export async function createSeededFixture(): Promise<TestFixture> {
-  const fixture = await createTestFixture();
-
-  const [sourceId] = await seedSources(fixture.repo);
-  if (!sourceId) throw new Error("Failed to seed sources");
-
-  const docIds = await seedDocuments(fixture.repo, sourceId);
-
-  // Seed chunks for each document
-  const contents = [
-    "Welcome to the documentation. This guide will help you get up and running quickly with our platform.",
-    "The API provides RESTful endpoints for managing resources. Use standard HTTP methods.",
-    "Authentication requires an API key. Include it in the Authorization header.",
-  ];
-
-  for (let i = 0; i < docIds.length; i++) {
-    const docId = docIds[i];
-    const content = contents[i];
-    if (docId && content) {
-      await seedChunks(fixture.repo, docId, content);
-    }
-  }
-
-  return fixture;
 }

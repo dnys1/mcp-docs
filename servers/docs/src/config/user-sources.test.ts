@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { createClient } from "@libsql/client";
-import { initializeDatabase } from "../db/migrations.js";
+import { DocsMigrationService } from "../db/migrations.js";
 import { DocsRepository } from "../db/repository.js";
 import type { DocSource } from "../types/index.js";
 import { docSourceSchema, SourcesService } from "./user-sources.js";
@@ -16,7 +16,8 @@ describe("SourcesService", () => {
     service = new SourcesService(repo);
 
     // Initialize schema
-    await initializeDatabase(db);
+    const migrationService = new DocsMigrationService(db);
+    await migrationService.initialize();
   });
 
   afterEach(async () => {

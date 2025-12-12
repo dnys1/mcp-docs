@@ -4,9 +4,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { EmbeddingCache } from "./cache/embedding-cache.js";
+import { EmbeddingConfig } from "./config/embeddings.js";
 import { SourcesService } from "./config/user-sources.js";
 import { DocsDatabase } from "./db/client.js";
-import { initializeDatabase } from "./db/migrations.js";
+import { DocsMigrationService } from "./db/migrations.js";
 import { DocsRepository } from "./db/repository.js";
 import { DescriptionService } from "./services/description-service.js";
 import { ToolService } from "./services/tool-service.js";
@@ -101,13 +102,19 @@ async function registerGroupTool(
 export async function startServer() {
   // Initialize dependencies
   const db = new DocsDatabase();
-  await initializeDatabase(db.client);
+  const migrationService = new DocsMigrationService(db.client);
+  await migrationService.initialize();
 
   const repo = new DocsRepository(db.client);
   const embeddingCache = new EmbeddingCache();
+  const embeddingConfig = EmbeddingConfig.fromEnv();
   const descriptionService = new DescriptionService(openai("gpt-4.1-mini"));
 
-  const toolService = new ToolService(repo, embeddingCache);
+  const toolService = new ToolService(
+    repo,
+    embeddingCache,
+    embeddingConfig.model,
+  );
   const sourcesService = new SourcesService(repo);
 
   // Load all sources from database

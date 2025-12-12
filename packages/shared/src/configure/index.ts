@@ -26,7 +26,7 @@
  * ```
  */
 
-import { prompt } from "../cli/prompt.ts";
+import { CliPromptService } from "../cli/prompt.ts";
 import { updateClaudeCodeConfig } from "./claude-code.ts";
 import type {
   EnvVarConfig,
@@ -57,13 +57,16 @@ Make sure to run '${config.name} build' first.
 ${envSection}`;
 }
 
-async function getEnvVarValue(envConfig: EnvVarConfig): Promise<string | null> {
+async function getEnvVarValue(
+  envConfig: EnvVarConfig,
+  promptService: CliPromptService,
+): Promise<string | null> {
   const existingValue = process.env[envConfig.name];
 
   if (existingValue) {
     const masked = `${existingValue.slice(0, 7)}...${existingValue.slice(-4)}`;
     console.log(`  Found ${envConfig.name} in environment: ${masked}`);
-    const useExisting = await prompt("  Use this value? [Y/n]: ");
+    const useExisting = await promptService.prompt("  Use this value? [Y/n]: ");
     if (useExisting.toLowerCase() !== "n") {
       return existingValue;
     }
@@ -74,7 +77,7 @@ async function getEnvVarValue(envConfig: EnvVarConfig): Promise<string | null> {
     console.log(`  Get one at: ${envConfig.helpUrl}\n`);
   }
 
-  const value = await prompt(
+  const value = await promptService.prompt(
     `  Enter your ${envConfig.name} (or press Enter to skip): `,
   );
 
@@ -91,7 +94,8 @@ async function getEnvVarValue(envConfig: EnvVarConfig): Promise<string | null> {
 }
 
 async function resolveEnvVars(
-  envVars?: EnvVarConfig[],
+  envVars: EnvVarConfig[] | undefined,
+  promptService: CliPromptService,
 ): Promise<ResolvedEnvVars> {
   if (!envVars?.length) {
     return {};
@@ -101,7 +105,7 @@ async function resolveEnvVars(
 
   console.log("Checking for environment variables...");
   for (const envConfig of envVars) {
-    const value = await getEnvVarValue(envConfig);
+    const value = await getEnvVarValue(envConfig, promptService);
     if (value) {
       resolved[envConfig.name] = value;
     }
@@ -122,8 +126,10 @@ export async function runConfigureCommand(
 
   console.log(`\nConfiguring ${config.name} MCP server...\n`);
 
+  const promptService = new CliPromptService();
+
   // Resolve environment variables
-  const envVars = await resolveEnvVars(config.envVars);
+  const envVars = await resolveEnvVars(config.envVars, promptService);
 
   // Configure Claude Code
   console.log("Configuring Claude Code...");
@@ -136,7 +142,7 @@ export async function runConfigureCommand(
   // Configure VSCode
   console.log("\nConfiguring VSCode...");
   try {
-    await updateVSCodeMCPConfig(config, envVars);
+    await updateVSCodeMCPConfig(config, envVars, promptService);
   } catch {
     console.error("  Failed to update VSCode MCP config");
   }

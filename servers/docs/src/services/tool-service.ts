@@ -1,7 +1,6 @@
 import { logger } from "@mcp/shared/logger";
-import { embed } from "ai";
+import { type EmbeddingModel, embed } from "ai";
 import type { EmbeddingCache } from "../cache/embedding-cache.js";
-import { getEmbeddingModel } from "../config/embeddings.js";
 import type { DocsRepository } from "../db/repository.js";
 import {
   cleanMarkdown,
@@ -51,8 +50,9 @@ export class ToolService {
   private log = logger.child({ service: "ToolService" });
 
   constructor(
-    private repo: DocsRepository,
-    private embeddingCache: EmbeddingCache,
+    private readonly repo: DocsRepository,
+    private readonly embeddingCache: EmbeddingCache,
+    private readonly embeddingModel: EmbeddingModel<string>,
   ) {}
 
   /**
@@ -146,9 +146,8 @@ export class ToolService {
 
     if (!embedding) {
       const embeddingStart = performance.now();
-      const embeddingModel = getEmbeddingModel();
       const result = await embed({
-        model: embeddingModel,
+        model: this.embeddingModel,
         value: params.query,
       });
       embedding = result.embedding;
@@ -269,9 +268,8 @@ export class ToolService {
 
     if (!embedding) {
       const embeddingStart = performance.now();
-      const embeddingModel = getEmbeddingModel();
       const result = await embed({
-        model: embeddingModel,
+        model: this.embeddingModel,
         value: params.query,
       });
       embedding = result.embedding;

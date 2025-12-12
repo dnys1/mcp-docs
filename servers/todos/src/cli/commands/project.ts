@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import { TodosDatabase } from "../../db/client.js";
-import { initializeDatabase } from "../../db/migrations.js";
+import { TodosMigrationService } from "../../db/migrations.js";
 import { TodoRepository } from "../../db/repository.js";
 import { ProjectService } from "../../services/project-service.js";
 import type { Project } from "../../types/index.js";
@@ -99,7 +99,8 @@ export async function projectCommand(args: string[]): Promise<void> {
   const repo = new TodoRepository(db.client);
 
   try {
-    await initializeDatabase(db.client);
+    const migrationService = new TodosMigrationService(db.client);
+    await migrationService.initialize();
 
     switch (subcommand) {
       case "list":

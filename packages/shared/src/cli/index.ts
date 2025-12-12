@@ -2,4 +2,4 @@
  * CLI utilities for MCP servers.
  */
 
-export { confirm, prompt } from "./prompt.ts";
+export { CliPromptService } from "./prompt.ts";

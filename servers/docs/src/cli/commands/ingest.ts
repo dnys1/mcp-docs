@@ -5,13 +5,14 @@
 import { openai } from "@ai-sdk/openai";
 import { logger } from "@mcp/shared/logger";
 import Firecrawl from "@mendable/firecrawl-js";
-import { getEmbeddingModel } from "../../config/embeddings.js";
+import { EmbeddingConfig } from "../../config/embeddings.js";
 import { SourcesService } from "../../config/user-sources.js";
 import { DocsDatabase } from "../../db/client.js";
-import { initializeDatabase } from "../../db/migrations.js";
+import { DocsMigrationService } from "../../db/migrations.js";
 import { DocsRepository } from "../../db/repository.js";
 import { EmbedderService } from "../../ingestion/embedder.js";
 import { FirecrawlService } from "../../ingestion/firecrawl.js";
+import { LlmsTxtService } from "../../ingestion/llms-txt.js";
 import { DescriptionService } from "../../services/description-service.js";
 import {
   type DryRunResult,
@@ -122,18 +123,22 @@ export async function ingestCommand(args: string[]) {
   const firecrawlService = firecrawlApiKey
     ? new FirecrawlService(new Firecrawl({ apiKey: firecrawlApiKey }))
     : undefined;
+  const embeddingConfig = EmbeddingConfig.fromEnv();
+  const llmsTxtService = new LlmsTxtService();
   const descriptionService = new DescriptionService(openai("gpt-4.1-mini"));
-  const embedderService = new EmbedderService(getEmbeddingModel());
+  const embedderService = new EmbedderService(embeddingConfig.model);
 
   const ingestionService = new IngestionService(
     repo,
     firecrawlService,
+    llmsTxtService,
     descriptionService,
     embedderService,
   );
   const sourcesService = new SourcesService(repo);
 
-  await initializeDatabase(db.client);
+  const migrationService = new DocsMigrationService(db.client);
+  await migrationService.initialize();
 
   // Load all sources from database
   const allSources = await sourcesService.listSources();

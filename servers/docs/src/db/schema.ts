@@ -1,4 +1,4 @@
-import { EMBEDDING_DIMENSIONS } from "../config/embeddings.js";
+import { EmbeddingConfig } from "../config/embeddings.js";
 
 export const SCHEMA = {
   sources: `
@@ -38,7 +38,7 @@ export const SCHEMA = {
       document_id INTEGER NOT NULL REFERENCES documents(id),
       chunk_index INTEGER NOT NULL,
       content TEXT NOT NULL,
-      embedding F32_BLOB(${EMBEDDING_DIMENSIONS}),
+      embedding F32_BLOB(${EmbeddingConfig.DEFAULT_DIMENSIONS}),
       token_count INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(document_id, chunk_index)

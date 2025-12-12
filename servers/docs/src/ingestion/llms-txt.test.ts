@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { fetchLlmsTxtDocs, parseLlmsTxt } from "./llms-txt.js";
+import { LlmsTxtService } from "./llms-txt.js";
 
 // Helper to create a typed fetch mock
 function mockFetch(impl: (url: string) => Promise<Response>) {
@@ -36,11 +36,13 @@ curl -fsSL https://bun.sh/install | bash
 \`\`\`
 `;
 
-describe("parseLlmsTxt", () => {
+describe("LlmsTxtService.parse", () => {
   let originalFetch: typeof global.fetch;
+  let service: LlmsTxtService;
 
   beforeEach(() => {
     originalFetch = global.fetch;
+    service = new LlmsTxtService();
   });
 
   afterEach(() => {
@@ -52,7 +54,7 @@ describe("parseLlmsTxt", () => {
       Promise.resolve(new Response(SAMPLE_LLMS_TXT, { status: 200 })),
     );
 
-    const entries = await parseLlmsTxt("https://example.com/llms.txt");
+    const entries = await service.parse("https://example.com/llms.txt");
 
     expect(entries).toHaveLength(6);
     expect(entries[0]).toEqual({
@@ -69,7 +71,7 @@ describe("parseLlmsTxt", () => {
       Promise.resolve(new Response(SAMPLE_LLMS_TXT, { status: 200 })),
     );
 
-    const entries = await parseLlmsTxt("https://example.com/llms.txt");
+    const entries = await service.parse("https://example.com/llms.txt");
 
     const optionalEntries = entries.filter((e) => e.isOptional);
     expect(optionalEntries).toHaveLength(2);
@@ -87,7 +89,7 @@ describe("parseLlmsTxt", () => {
       Promise.resolve(new Response(content, { status: 200 })),
     );
 
-    const entries = await parseLlmsTxt("https://example.com/llms.txt");
+    const entries = await service.parse("https://example.com/llms.txt");
 
     expect(entries).toHaveLength(2);
     expect(entries[0]?.description).toBeUndefined();
@@ -102,7 +104,7 @@ describe("parseLlmsTxt", () => {
       Promise.resolve(new Response(content, { status: 200 })),
     );
 
-    const entries = await parseLlmsTxt("https://example.com/llms.txt");
+    const entries = await service.parse("https://example.com/llms.txt");
 
     expect(entries[0]?.description).toBe("Configure options: foo, bar, baz");
   });
@@ -123,7 +125,7 @@ Some intro text that should be ignored.
       Promise.resolve(new Response(content, { status: 200 })),
     );
 
-    const entries = await parseLlmsTxt("https://example.com/llms.txt");
+    const entries = await service.parse("https://example.com/llms.txt");
 
     // Both entries should be included - one under "Title", one under "Actual Section"
     expect(entries).toHaveLength(2);
@@ -138,7 +140,7 @@ Some intro text that should be ignored.
       Promise.resolve(new Response("", { status: 200 })),
     );
 
-    const entries = await parseLlmsTxt("https://example.com/llms.txt");
+    const entries = await service.parse("https://example.com/llms.txt");
 
     expect(entries).toHaveLength(0);
   });
@@ -154,7 +156,7 @@ Some intro text that should be ignored.
       Promise.resolve(new Response(content, { status: 200 })),
     );
 
-    const entries = await parseLlmsTxt("https://example.com/llms.txt");
+    const entries = await service.parse("https://example.com/llms.txt");
 
     expect(entries).toHaveLength(0);
   });
@@ -166,7 +168,7 @@ Some intro text that should be ignored.
       ),
     );
 
-    await expect(parseLlmsTxt("https://example.com/llms.txt")).rejects.toThrow(
+    await expect(service.parse("https://example.com/llms.txt")).rejects.toThrow(
       "Failed to fetch llms.txt",
     );
   });
@@ -184,7 +186,7 @@ Some intro text that should be ignored.
       Promise.resolve(new Response(content, { status: 200 })),
     );
 
-    const entries = await parseLlmsTxt("https://example.com/llms.txt");
+    const entries = await service.parse("https://example.com/llms.txt");
 
     expect(entries).toHaveLength(2);
     expect(entries.every((e) => e.isOptional)).toBe(true);
@@ -195,7 +197,7 @@ Some intro text that should be ignored.
       Promise.resolve(new Response(SAMPLE_LLMS_TXT, { status: 200 })),
     );
 
-    const entries = await parseLlmsTxt("https://example.com/llms.txt");
+    const entries = await service.parse("https://example.com/llms.txt");
 
     const sections = [...new Set(entries.map((e) => e.section))];
     expect(sections).toContain("Getting Started");
@@ -204,11 +206,13 @@ Some intro text that should be ignored.
   });
 });
 
-describe("fetchLlmsTxtDocs", () => {
+describe("LlmsTxtService.fetchDocs", () => {
   let originalFetch: typeof global.fetch;
+  let service: LlmsTxtService;
 
   beforeEach(() => {
     originalFetch = global.fetch;
+    service = new LlmsTxtService();
   });
 
   afterEach(() => {
@@ -231,7 +235,7 @@ describe("fetchLlmsTxtDocs", () => {
       return Promise.resolve(new Response(SAMPLE_DOC_CONTENT, { status: 200 }));
     });
 
-    const docs = await fetchLlmsTxtDocs("https://example.com/llms.txt");
+    const docs = await service.fetchDocs("https://example.com/llms.txt");
 
     expect(docs).toHaveLength(1);
     expect(docs[0]?.title).toBe("Install");
@@ -255,7 +259,7 @@ describe("fetchLlmsTxtDocs", () => {
       return Promise.resolve(new Response("content", { status: 200 }));
     });
 
-    const docs = await fetchLlmsTxtDocs("https://example.com/llms.txt");
+    const docs = await service.fetchDocs("https://example.com/llms.txt");
 
     expect(docs).toHaveLength(1);
     expect(docs[0]?.title).toBe("Doc1");
@@ -278,7 +282,7 @@ describe("fetchLlmsTxtDocs", () => {
       return Promise.resolve(new Response("content", { status: 200 }));
     });
 
-    const docs = await fetchLlmsTxtDocs("https://example.com/llms.txt", {
+    const docs = await service.fetchDocs("https://example.com/llms.txt", {
       includeOptional: true,
     });
 
@@ -309,7 +313,7 @@ describe("fetchLlmsTxtDocs", () => {
       );
     });
 
-    const docs = await fetchLlmsTxtDocs("https://example.com/llms.txt");
+    const docs = await service.fetchDocs("https://example.com/llms.txt");
 
     // Should have 2 docs (doc1 and doc3), doc2 failed
     expect(docs).toHaveLength(2);
@@ -330,7 +334,7 @@ describe("fetchLlmsTxtDocs", () => {
       return Promise.resolve(new Response("content", { status: 200 }));
     });
 
-    const docs = await fetchLlmsTxtDocs("https://example.com/llms.txt");
+    const docs = await service.fetchDocs("https://example.com/llms.txt");
 
     expect(docs[0]?.path).toBe("docs/api/serve");
   });
@@ -349,7 +353,7 @@ describe("fetchLlmsTxtDocs", () => {
       return Promise.resolve(new Response("content", { status: 200 }));
     });
 
-    const docs = await fetchLlmsTxtDocs("https://example.com/llms.txt");
+    const docs = await service.fetchDocs("https://example.com/llms.txt");
 
     expect(docs[0]?.metadata).toEqual({
       section: "Getting Started",
@@ -380,7 +384,7 @@ describe("fetchLlmsTxtDocs", () => {
       );
     });
 
-    const docs = await fetchLlmsTxtDocs("https://example.com/llms.txt");
+    const docs = await service.fetchDocs("https://example.com/llms.txt");
 
     expect(docs).toHaveLength(1);
     expect(fetchedUrls).toContain("https://example.com/doc");

@@ -3,7 +3,6 @@
  * Supports multiple OpenAI models for comparison and experimentation.
  */
 
-import { openai } from "@ai-sdk/openai";
 import { logger } from "@mcp/shared/logger";
 import type { LanguageModel } from "ai";
 import { generateText } from "ai";
@@ -44,13 +43,6 @@ export class SynthesisService {
     private readonly languageModel: LanguageModel,
     private readonly modelName: string,
   ) {}
-
-  /**
-   * Create a SynthesisService with an OpenAI model.
-   */
-  static withOpenAI(model: SynthesisModel = "gpt-4.1-mini"): SynthesisService {
-    return new SynthesisService(openai(model), model);
-  }
 
   async synthesize(
     query: string,

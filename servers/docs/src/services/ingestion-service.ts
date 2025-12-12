@@ -4,7 +4,7 @@ import type { DocsRepository, IngestionProgress } from "../db/repository.js";
 import { chunkDocument } from "../ingestion/chunker.js";
 import type { EmbedderService } from "../ingestion/embedder.js";
 import type { FirecrawlService } from "../ingestion/firecrawl.js";
-import { fetchLlmsTxtDocs } from "../ingestion/llms-txt.js";
+import type { LlmsTxtService } from "../ingestion/llms-txt.js";
 import type { DocSource, FetchedDocument } from "../types/index.js";
 import type { DescriptionService } from "./description-service.js";
 
@@ -36,6 +36,7 @@ export class IngestionService {
   constructor(
     private repo: DocsRepository,
     private firecrawlService: FirecrawlService | undefined,
+    private llmsTxtService: LlmsTxtService,
     private descriptionService: DescriptionService,
     private embedderService: EmbedderService,
   ) {}
@@ -249,7 +250,7 @@ export class IngestionService {
     cachedUrls: string[] = [],
   ): Promise<FetchedDocument[]> {
     if (source.type === "llms_txt") {
-      return fetchLlmsTxtDocs(source.url, source.options);
+      return this.llmsTxtService.fetchDocs(source.url, source.options);
     }
     if (source.type === "firecrawl") {
       if (!this.firecrawlService) {

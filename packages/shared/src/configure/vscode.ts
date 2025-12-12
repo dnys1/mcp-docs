@@ -6,7 +6,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { prompt } from "../cli/prompt.ts";
+import type { CliPromptService } from "../cli/prompt.ts";
 import type {
   McpServerConfig,
   ResolvedEnvVars,
@@ -16,6 +16,7 @@ import type {
 export async function updateVSCodeMCPConfig(
   config: McpServerConfig,
   envVars: ResolvedEnvVars,
+  promptService: CliPromptService,
 ): Promise<void> {
   // Only supported on macOS for now
   if (process.platform !== "darwin") {
@@ -39,7 +40,7 @@ export async function updateVSCodeMCPConfig(
 
   // If mcp.json doesn't exist, ask if they want to create it
   if (!existsSync(mcpConfigPath)) {
-    const create = await prompt(
+    const create = await promptService.prompt(
       "  VSCode mcp.json not found. Create it? [Y/n]: ",
     );
     if (create.toLowerCase() === "n") {

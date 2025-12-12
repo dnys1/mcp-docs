@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { TodosDatabase } from "./db/client.js";
-import { initializeDatabase } from "./db/migrations.js";
+import { TodosMigrationService } from "./db/migrations.js";
 import { TodoRepository } from "./db/repository.js";
 import { ProjectService } from "./services/project-service.js";
 import { TodoService } from "./services/todo-service.js";
@@ -12,7 +12,8 @@ import { ToolService } from "./services/tool-service.js";
 export async function startServer() {
   // Initialize dependencies
   const db = new TodosDatabase();
-  await initializeDatabase(db.client);
+  const migrationService = new TodosMigrationService(db.client);
+  await migrationService.initialize();
 
   const repo = new TodoRepository(db.client);
   const projectService = new ProjectService(repo);

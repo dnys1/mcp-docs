@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import { TodosDatabase } from "../../db/client.js";
-import { initializeDatabase } from "../../db/migrations.js";
+import { TodosMigrationService } from "../../db/migrations.js";
 import { TodoRepository } from "../../db/repository.js";
 import { TodoService } from "../../services/todo-service.js";
 
@@ -42,7 +42,8 @@ export async function deleteCommand(args: string[]): Promise<void> {
   const repo = new TodoRepository(db.client);
 
   try {
-    await initializeDatabase(db.client);
+    const migrationService = new TodosMigrationService(db.client);
+    await migrationService.initialize();
     const todoService = new TodoService(repo);
 
     const deleted = await todoService.delete(todoId);

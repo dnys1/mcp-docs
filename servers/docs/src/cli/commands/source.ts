@@ -5,7 +5,7 @@
 import { parseArgs } from "node:util";
 import { docSourceSchema, SourcesService } from "../../config/user-sources.js";
 import { DocsDatabase } from "../../db/client.js";
-import { initializeDatabase } from "../../db/migrations.js";
+import { DocsMigrationService } from "../../db/migrations.js";
 import { DocsRepository } from "../../db/repository.js";
 import type { DocSource } from "../../types/index.js";
 
@@ -62,7 +62,8 @@ export async function sourceCommand(args: string[]) {
   const repo = new DocsRepository(db.client);
   const service = new SourcesService(repo);
 
-  await initializeDatabase(db.client);
+  const migrationService = new DocsMigrationService(db.client);
+  await migrationService.initialize();
 
   try {
     switch (subcommand) {

@@ -10,7 +10,9 @@
  *   synthesis  - AI-synthesized answer
  */
 
+import { openai } from "@ai-sdk/openai";
 import { EmbeddingCache } from "../../cache/embedding-cache.js";
+import { EmbeddingConfig } from "../../config/embeddings.js";
 import { DocsDatabase } from "../../db/client.js";
 import { DocsRepository } from "../../db/repository.js";
 import {
@@ -100,8 +102,13 @@ export async function searchCommand(args: string[]) {
 
   const db = new DocsDatabase();
   const repo = new DocsRepository(db.client);
+  const embeddingConfig = EmbeddingConfig.fromEnv();
   const embeddingCache = new EmbeddingCache();
-  const toolService = new ToolService(repo, embeddingCache);
+  const toolService = new ToolService(
+    repo,
+    embeddingCache,
+    embeddingConfig.model,
+  );
 
   // Verify source exists
   const sources = await repo.listSources();
@@ -177,7 +184,7 @@ export async function searchCommand(args: string[]) {
       }
 
       // Then synthesize
-      const synthesisService = SynthesisService.withOpenAI(model);
+      const synthesisService = new SynthesisService(openai(model), model);
       const synthResult = await synthesisService.synthesize(
         query,
         docsResult.documents,

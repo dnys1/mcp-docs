@@ -1,20 +1,12 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
+import type { EmbeddingModel } from "ai";
 import { EmbeddingCache } from "../cache/embedding-cache.js";
-import type { TestFixture } from "../test-utils/db.js";
 import {
   createMockEmbedding,
-  createSeededFixture,
-  createTestFixture,
   seedSources,
+  TestFixture,
 } from "../test-utils/db.js";
 import { ToolService } from "./tool-service.js";
-
-// Mock the embedding model to avoid API calls
-mock.module("../config/embeddings.js", () => ({
-  getEmbeddingModel: () => ({
-    // Mock model that returns deterministic embeddings
-  }),
-}));
 
 // Mock the ai module's embed function
 mock.module("ai", () => ({
@@ -23,15 +15,18 @@ mock.module("ai", () => ({
   }),
 }));
 
+// Mock embedding model for testing (the embed mock ignores the model)
+const mockEmbeddingModel = {} as EmbeddingModel<string>;
+
 describe("ToolService.searchSourceDocs", () => {
   let fixture: TestFixture;
   let service: ToolService;
   let embeddingCache: EmbeddingCache;
 
   beforeEach(async () => {
-    fixture = await createSeededFixture();
+    fixture = await TestFixture.createSeeded();
     embeddingCache = new EmbeddingCache();
-    service = new ToolService(fixture.repo, embeddingCache);
+    service = new ToolService(fixture.repo, embeddingCache, mockEmbeddingModel);
   });
 
   afterEach(async () => {
@@ -83,7 +78,7 @@ describe("ToolService.searchSourceDocs", () => {
     expect(resultCount).toBeLessThanOrEqual(5);
   });
 
-  test("includes title, path, and URL in results", async () => {
+  test("includes title and URL in results", async () => {
     const result = await service.searchSourceDocs("test-docs", {
       query: "getting started",
       limit: 3,
@@ -91,8 +86,8 @@ describe("ToolService.searchSourceDocs", () => {
 
     const text = result.content[0]?.text ?? "";
     if (text.includes("##")) {
-      // Results format: ## Title (path)\nURL\n\nContent
-      expect(text).toMatch(/## .+ \(.+\)/);
+      // Results format: ## Title\nURL\n\nContent
+      expect(text).toMatch(/## .+\nhttps?:\/\//);
       expect(text).toContain("https://");
     }
   });
@@ -114,9 +109,9 @@ describe("ToolService Edge Cases", () => {
   let embeddingCache: EmbeddingCache;
 
   beforeEach(async () => {
-    fixture = await createTestFixture();
+    fixture = await TestFixture.create();
     embeddingCache = new EmbeddingCache();
-    service = new ToolService(fixture.repo, embeddingCache);
+    service = new ToolService(fixture.repo, embeddingCache, mockEmbeddingModel);
   });
 
   afterEach(async () => {
